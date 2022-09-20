@@ -11,12 +11,14 @@ class IP:
     def __init__(self, i, packet):
         self.version = packet[i]
         self.header_len = "20 bytes"
-        self.type_of_serv = "0x00"
+        i+=2
+        self.type_of_serv = "0x" + packet[i:i + 2]
+        binary = "{0:08b}".format(int(packet[i:i + 2], 16))
         self.type_of_serv += "\n\txxx. ... = 0 (precedence)\n" \
-                             "\t...0 .... = normal delay\n" \
-                             "\t.... 0... = normal throughput\n" \
-                             "\t.... .0.. = normal reliability"
-        i += 4
+                             "\t..." + binary[3] + " .... = normal delay\n" \
+                             "\t.... " + binary[4] + "... = normal throughput\n" \
+                             "\t.... ." + binary[5] + ".. = normal reliability"
+        i += 2
         self.total_len = str(int(packet[i:i + 4], 16)) + " bytes"
         i += 4
         self.id = str(int(packet[i:i + 4], 16))

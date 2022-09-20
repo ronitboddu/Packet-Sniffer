@@ -109,6 +109,10 @@ def commandNot(rSet):
     return packet_set - rSet
 
 
+def commandIp():
+    return packet_set
+
+
 def getResultSet(command, param=None):
     if command == "host":
         return commandHost(packet_list, param)
@@ -122,22 +126,17 @@ def getResultSet(command, param=None):
         return commandTCP(packet_list)
     elif command == "udp":
         return commandUDP(packet_list)
+    elif command == "ip":
+        return commandIp()
 
 
-if __name__ == '__main__':
-    filename = sys.argv[2]
-    pktsniffer = PacketSniffer(filename)
-    boolean_ops = {'and', 'or', 'not'}
-    packet_list = pktsniffer.packet_list
-    packet_set = pktsniffer.packet_set
-    packt_dict = pktsniffer.packet_dict
+def executeFilter():
     i = 0
-    ans_set = set()
     stack = []
     while i < len(sys.argv):
         if sys.argv[i] in {"and", "or", "not"}:
             stack.append(sys.argv[i])
-        elif sys.argv[i] in {"icmp", "tcp", "udp"}:
+        elif sys.argv[i] in {"icmp", "tcp", "udp", "ip"}:
             stack.append(getResultSet(sys.argv[i]))
         elif sys.argv[i] in {"host", "port", "-net"}:
             stack.append(getResultSet(sys.argv[i], sys.argv[i + 1]))
@@ -154,36 +153,45 @@ if __name__ == '__main__':
             exec_not.append(stack[i])
         i += 1
 
-    exec_and = []
+    exec_and_or = []
     i = 0
     while i < len(exec_not):
         if exec_not[i] == "and":
-            set1 = exec_and.pop()
+            set1 = exec_and_or.pop()
             set2 = exec_not[i + 1]
             i += 1
-            exec_and.append(set1.intersection(set2))
-        else:
-            exec_and.append(exec_not[i])
-        i += 1
-
-    exec_or = []
-    i = 0
-    while i < len(exec_and):
-        if exec_and[i] == "or":
-            set1 = exec_or.pop()
-            set2 = exec_and[i + 1]
+            exec_and_or.append(set1.intersection(set2))
+        elif exec_not[i] == "or":
+            set1 = exec_and_or.pop()
+            set2 = exec_not[i + 1]
             i += 1
-            exec_or.append(set1.union(set2))
+            exec_and_or.append(set1.union(set2))
         else:
-            exec_or.append(exec_and[i])
+            exec_and_or.append(exec_not[i])
         i += 1
 
-    length = len(exec_or)
+    length = len(exec_and_or[0])
     if "-c" in sys.argv:
         length = int(sys.argv[sys.argv.index("-c") + 1])
 
-    for pkt_num in exec_or[0]:
+    for pkt_num in exec_and_or[0]:
         print(packt_dict[pkt_num])
         length -= 1
         if length == 0:
             break
+
+
+if __name__ == '__main__':
+    filename = sys.argv[2]
+    pktsniffer = PacketSniffer(filename)
+    packet_list = pktsniffer.packet_list
+    packet_set = pktsniffer.packet_set
+    packt_dict = pktsniffer.packet_dict
+    try:
+        if len(sys.argv) > 3:
+            executeFilter()
+        else:
+            for pkt in packet_list:
+                print(pkt)
+    except:
+        print("Please enter a valid Command.")
